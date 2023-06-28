@@ -1,0 +1,89 @@
+airplane
+bin
+basket
+bathtub
+bed
+birdhouse
+bookshelf
+bus
+cabinet
+camera
+can
+cap
+clock
+dishwasher
+display
+faucet
+file cabinet
+guitar
+helmet
+jar
+knife
+lamp
+loud speaker
+mailbox
+microphone
+mug
+piano
+pillow
+pistol
+flower pot
+printer
+rifle
+rocket
+stove
+table
+tower
+train
+vessel
+washer
+apple
+backpack
+ball
+banana
+baseball bat
+glove
+bench
+bicycle
+book
+bottle
+bowl
+broccoli
+cake
+car
+carrot
+cellphone
+chair
+couch
+cup
+donut
+frisbee
+hair dryer
+handbag
+hotdog
+hydrant
+keyboard
+kite
+laptop
+microwave
+motorcycle
+mouse
+orange
+parking
+pizza
+plant
+remote
+sandwich
+skateboard
+stopsign
+suitcase
+teddybear
+toaster
+toilet
+toy bus
+toy plane
+toy truck
+tv
+umbrella
+vase
+wineglass
