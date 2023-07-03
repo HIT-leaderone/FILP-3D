@@ -24,7 +24,11 @@ from datasets.CILdataset import *
 from torch.nn.parallel import DataParallel
 
 from torchpq.clustering import MinibatchKMeans
-from models import FewShotCIL, focal_loss, FewShotCILwoRn, FewShotCILwoRn2
+from models import FewShotCIL, focal_loss, FewShotCILwoRn, FewShotCILwoRn2, FewShotCILwPoint
+
+import sys, importlib
+sys.path.append('models')
+
 #################################################### TConfigurations ############################################
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 device_id = [0, 1]
@@ -44,7 +48,7 @@ parser.add_argument('-b', '--batch_size', type=int, default=32, help='batchsize'
 parser.add_argument('-mem', '--use_memory', type=bool, default=True, help='whether to use memory in training data')
 parser.add_argument('-memshot', '--memory_shot', type=int, default=1, help='maxshot per class in training memory')
 parser.add_argument('--loss_fn', type=str, default='ce', choices=['ce', 'bce', 'focal'],help='Loss_fn to use, [ce, focal]')
-parser.add_argument('--use_rn', type=bool, default=False, help='whether to use Relation Module')
+parser.add_argument('--model', type=str, default='FewShotCILwPoint', choices=['FewShotCILwPoint', 'FewShotCILwoRn', 'FewShotCIL'], help='which model to use')
     
 parser.add_argument('-w', '--workers', type=int, default=8, help='number of dataloader workers')
 parser.add_argument('-c', '--ckpt', type=str, default='/home/tudooh/qty/CLIP2PointCIL/CLIP2Point-main/pre_builts/vit32/best_eval.pth', help='path of ckpt')
@@ -54,6 +58,12 @@ parser.add_argument('-f', '--feats_p_path', type=str, default='./feats_p/feats_p
 parser.add_argument('-shot', '--fewshot', type=int, default=5, help='number of shots')
 parser.add_argument('--parallel', type=bool, default=False, help='whether to use multiple gpus')
 parser.add_argument('--pin_memory', type=bool, default=True, help='whether to use pinned memory')
+
+# point branchpoint_dpkg_path
+parser.add_argument('--point_dpkg_path', type=str, default='./pre_builts/point/dgcnn_occo_cls.pth', help="path to pretrained weights [default: None]")
+parser.add_argument('--point_emb_dims', type=int, default=1024, help='dimension of embeddings [default: 1024]')
+parser.add_argument('--point_k', type=int, default=20, help='number of nearest neighbors to use [default: 20]')
+    
 
 
 args = parser.parse_args()
@@ -225,11 +235,7 @@ def train():
     test_loader_0 = torch.utils.data.DataLoader(dataset_test_0, batch_size=args.batch_size, num_workers=args.workers,
                                                     pin_memory=args.pin_memory,shuffle=True)
     
-    if args.use_rn:
-        model = FewShotCIL(args, feats_p=feats_p, p_mask=0b11).to(device)
-    else:
-        model = FewShotCILwoRn2(args, feats_p=feats_p, p_mask=0b11).to(device)
-        
+    model = getattr(importlib.import_module('models'), args.model)(args, feats_p=feats_p, p_mask=0b11).to(device)
     # gpu parallel
     if args.parallel:
         model = DataParallel(model, device_ids=device_id)

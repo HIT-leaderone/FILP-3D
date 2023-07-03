@@ -29,4 +29,4 @@ views: 6
 
 cluster_num: 512
 use_new_feats_p: false
-feats_p_path: './large_feature/large_feature.pth'
+feats_p_path: './lda/lda.pth'

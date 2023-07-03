@@ -10,3 +10,6 @@ large_feature/
 feats_p/
 *.png
 *.jpeg
+.history/
+.vscode/
+*.pth

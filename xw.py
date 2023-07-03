@@ -52,7 +52,7 @@ parser.add_argument('-w', '--workers', type=int, default=8, help='number of data
 parser.add_argument('-c', '--ckpt', type=str, default='/home/tudooh/qty/CLIP2PointCIL/CLIP2Point-main/pre_builts/vit32/best_eval.pth', help='path of ckpt')
 parser.add_argument('-v', '--views', type=int, default=6, help='views of rendering')
 parser.add_argument('-s', '--seed', type=int, default=42, help='seed')
-parser.add_argument('-f', '--feats_p_path', type=str, default='./feats_p/feats_p.pth', help='path of feats_p')
+parser.add_argument('-f', '--feats_p_path', type=str, default='./lda/lda.pth', help='path of feats_p')
 parser.add_argument('-shot', '--fewshot', type=int, default=5, help='number of shots')
 parser.add_argument('--parallel', type=bool, default=False, help='whether to use multiple gpus')
 parser.add_argument('--pin_memory', type=bool, default=True, help='whether to use pinned memory')
@@ -222,7 +222,8 @@ def train():
         feats_p = get_p(train_loader_0, model_depth).to(device)
         torch.save(feats_p, args.feats_p_path)
     else:
-        feats_p = torch.load(args.feats_p_path).to(device)
+        feats_p = torch.load(args.feats_p_path).to(device).t()
+        feats_p = feats_p.to(torch.float32)
     
     # task_0 
     runtime_stat = {'task_id':0, 'epoch':0}
@@ -287,7 +288,7 @@ def train():
         
 
 if __name__ == "__main__":
-    feats_p = torch.load(args.feats_p_path).to(device)
+    feats_p = torch.load(args.feats_p_path).to(device).t()
     print(feats_p.shape)
     io.cprint("Device:", device)
     train()

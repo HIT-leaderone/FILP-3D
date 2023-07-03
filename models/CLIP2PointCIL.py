@@ -11,6 +11,7 @@ from .dpa import DPA
 from render import Renderer, Selector
 from utils import read_state_dict
 import torchvision.utils as tv
+from .dgcnn_cls import get_point_encoder
 
 clip_model, _ = clip.load("ViT-B/32", device='cpu')
 clip_out_dim = 512
@@ -115,7 +116,6 @@ class FewShotCIL(nn.Module):
         img_feat2 = self.adapter2(img_feat2)
         
         img_feats = (img_feat1 + img_feat2) * 0.5
-        img_feats = img_feats / img_feats.norm(dim=-1, keepdim=True) # [b, d_vec_i]
         
         prompts_feats = prompts_feats.unsqueeze(0).repeat(img_feats.size(0), 1 ,1) # [n_cls, d_vec_p] -> [b, n_cls, d_vec_p]
         img_feats = img_feats.unsqueeze(1).repeat(1, num_cls, 1) # [b, d_vec_i] -> [b, n_cls, d_vec_i]
@@ -186,33 +186,95 @@ class FewShotCILwoRn2(FewShotCIL):
             img_feats = img_feats @ self.feats_p
             prompts_feats = prompts_feats @ self.feats_p # [b, n_cls, d_vec]
         
-        img_feats = img_feats / img_feats.norm(dim=-1, keepdim=True) # [b, d_vec]
-        #prompts_feats = prompts_feats / prompts_feats.norm(dim=-1, keepdim=True)
+        # img_feats = img_feats / img_feats.norm(dim=-1, keepdim=True) # [b, d_vec]
+        # prompts_feats = prompts_feats / prompts_feats.norm(dim=-1, keepdim=True)
         
         prompts_feats = prompts_feats.unsqueeze(0).repeat(img_feats.size(0), 1 ,1) # [n_cls, d_vec] -> [b, n_cls, d_vec]
         img_feats = img_feats.unsqueeze(2) # [b, d_vec] -> [b, d_vec, 1]
         
         logits = torch.bmm(prompts_feats, img_feats) # [b, n_cls, 1]
-        logits = torch.squeeze(logits)
-        logits = logits / logits.norm(dim=-1, keepdim=True) 
         
         return logits
         
-        # azim, elev, dist = self.selector(points)
-        # imgs = self.renderer(points, azim, elev, dist, self.views, rot=False)
-        # b, n, c, h, w = imgs.size()
-        # imgs = imgs.reshape(b * n, c, h, w)
-        # img_feats = (self.adapter1(self.pre_model(imgs)) + self.adapter2(self.ori_model(imgs))) * 0.5   
-        # img_feats = self.adapter1(img_feats)
-        # if self.feats_p is not None:
-        #     img_feats = img_feats @ self.feats_p @ self.feats_p.t() @ prompts_feats.t()
-        # else:
-        #     img_feats = img_feats @ prompts_feats.t()
-        # img_feats = img_feats / img_feats.norm(dim=-1, keepdim=True) 
-        # return img_feats
     
     def get_dims(self):
         self.dim_img = self.dim_prompt = clip_out_dim
+
+   
+class FewShotCILwPoint(nn.Module):
+    def __init__(self, args, feats_p=None, eval=False, p_mask=0b11):
+        assert p_mask in [0b11, 0b00]
+        super().__init__()
+        # feats_p
+        self.feats_p = feats_p
+        self.p_mask = p_mask # mult feats_p on: 10->dep & img | 01->prompts
+        self.get_dims() # get dims of different layers according to feats_p and p_mask
+        
+        # rendering
+        self.views = args.views
+        self.selector = Selector(self.views, 0)
+        self.renderer = Renderer(points_radius=0.02)
+        
+        # encoding -- freezed after pre-training
+        self.pre_model = deepcopy(clip_model.visual)
+        self.ori_model = deepcopy(clip_model.visual)
+        if not eval and args.ckpt is not None:
+            print('loading from %s' % args.ckpt)
+            self.pre_model.load_state_dict(read_state_dict(args.ckpt))
+    
+        self.point_model = get_point_encoder(args)
+        self.linear_point = nn.Sequential(
+            nn.Linear(2048, 512, bias=False),
+            nn.BatchNorm1d(512),
+            nn.Linear(512, self.dim_img),
+            nn.BatchNorm1d(self.dim_img)
+        )
+        
+        # adapter -- freezed after task_0
+        self.adapter1 = SimplifiedAdapter(num_views=args.views, in_features=self.dim_img)
+        self.adapter2 = SimplifiedAdapter(num_views=args.views, in_features=self.dim_img)
+        
+    def forward(self, points, prompts_feats):
+        num_cls = prompts_feats.size(0)
+        
+        azim, elev, dist = self.selector(points)
+        imgs = self.renderer(points, azim, elev, dist, self.views, rot=False)
+        b, n, c, h, w = imgs.size()
+        imgs = imgs.reshape(b * n, c, h, w)
+        # tv.save_image(imgs, './depco.png')
+        img_feat1 = self.pre_model(imgs)
+        img_feat2 = self.ori_model(imgs)
+        
+        points = torch.transpose(points, 1, 2)
+        point_feat = self.point_model(points)
+        point_feat = self.linear_point(point_feat)
+        point_feat = torch.repeat_interleave(point_feat, repeats=self.views, dim=0)
+        
+        if self.feats_p is not None and self.p_mask == 0b11:
+            img_feat1 = img_feat1 @ self.feats_p
+            img_feat2 = img_feat2 @ self.feats_p
+            prompts_feats = prompts_feats @ self.feats_p # [b, n_cls, d_vec]
+        
+        img_point_feat1 = self.adapter1(img_feat1 + point_feat)
+        img_point_feat2 = self.adapter2(img_feat2 + point_feat)
+        
+        img_point_feats = (img_point_feat1 + img_point_feat2) * 0.5
+        
+        prompts_feats = prompts_feats.unsqueeze(0).repeat(img_point_feats.size(0), 1 ,1) # [n_cls, d_vec] -> [b, n_cls, d_vec]
+        img_point_feats = img_point_feats.unsqueeze(2) # [b, d_vec] -> [b, d_vec, 1]
+        
+        logits = torch.bmm(prompts_feats, img_point_feats) # [b, n_cls]
+        
+        return logits
+    
+    def get_dims(self):
+        self.dim_img = self.dim_prompt = clip_out_dim
+        if self.feats_p is not None:
+            self.dim_feats_p = self.feats_p.size(1)
+            if self.p_mask & 0b10:
+                self.dim_img = self.dim_feats_p
+            if self.p_mask & 0b01:
+                self.dim_prompt = self.dim_feats_p
 
 class focal_loss(nn.Module):
     def __init__(self, alpha=0.25, gamma=2, num_classes = 3, size_average=True):
