@@ -5,7 +5,16 @@ import yaml
 from datetime import datetime
 import os
 from collections import Counter
+from torchpq.clustering import MinibatchKMeans
+from render.selector import Selector
+from render.render import Renderer
 import torch.nn.functional as F
+from tqdm import tqdm
+
+import subprocess
+
+import torch.distributed as dist
+
 class Argument(object):
     def __init__(self, config_file):
         super(Argument, self).__init__()    
@@ -128,4 +137,63 @@ def get_cls_balance_weight(train_dataloader, num_classes):
             norm += weight[l]
     weight /= norm
     return weight
-    
+
+def get_p(args, dataloader_0, model_depth):
+    """ aggrate all image features to 'image_feats' """
+    device = next(model_depth.parameters()).device
+    clip_feat_dim = 512
+    selector = Selector(args.views, 0).to(device)
+    render = Renderer(points_per_pixel=1, points_radius=0.02).to(device)
+    image_feats = torch.empty([0, clip_feat_dim]).to(device)
+    model_depth.eval()
+    with torch.no_grad():
+        for points, label in tqdm(dataloader_0):
+            points = points.to(device)
+            c_views_azim, c_views_elev, c_views_dist = selector(points)
+            images = render(points, c_views_azim, c_views_elev, c_views_dist, args.views, rot=False)
+            b, n, c, h, w = images.shape
+            images = images.reshape(-1, c, h, w)
+            image_feat = model_depth(images)
+            image_feats = torch.cat([image_feats, image_feat / image_feat.norm(dim=-1, keepdim=True)], dim=0) # [views*n_data, d_vec]
+    # k-means for clustering
+    kmeans = MinibatchKMeans(n_clusters=args.cluster_num, distance='cosine', init_mode='kmeans++')
+    cluster_centers = kmeans.kmeanspp(image_feats.t()).float().t() # [num_cluster, d_vec]
+    feats_p = svd_conversion(cluster_centers)
+    return feats_p
+
+
+
+def setup_distributed(backend="nccl", port=None):
+    """AdaHessian Optimizer
+    Lifted from https://github.com/BIGBALLON/distribuuuu/blob/master/distribuuuu/utils.py
+    Originally licensed MIT, Copyright (c) 2020 Wei Li
+    """
+    num_gpus = torch.cuda.device_count()
+
+    if "SLURM_JOB_ID" in os.environ:
+        rank = int(os.environ["SLURM_PROCID"])
+        world_size = int(os.environ["SLURM_NTASKS"])
+        node_list = os.environ["SLURM_NODELIST"]
+        addr = subprocess.getoutput(f"scontrol show hostname {node_list} | head -n1")
+        # specify master port
+        if port is not None:
+            os.environ["MASTER_PORT"] = str(port)
+        elif "MASTER_PORT" not in os.environ:
+            os.environ["MASTER_PORT"] = "10685"
+        if "MASTER_ADDR" not in os.environ:
+            os.environ["MASTER_ADDR"] = addr
+        os.environ["WORLD_SIZE"] = str(world_size)
+        os.environ["LOCAL_RANK"] = str(rank % num_gpus)
+        os.environ["RANK"] = str(rank)
+    else:
+        rank = int(os.environ["RANK"])
+        world_size = int(os.environ["WORLD_SIZE"])
+
+    torch.cuda.set_device(rank % num_gpus)
+
+    dist.init_process_group(
+        backend=backend,
+        world_size=world_size,
+        rank=rank,
+    )
+    return rank, world_size

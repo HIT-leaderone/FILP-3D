@@ -74,6 +74,16 @@ def get_p(dataloader_1, model_depth, selector, render):
 
 
 def inference():
+    for task_id in range(0, args.ntasks):
+        # get dataloader_i
+        dataloader_i = dataloader_tot.get(task_id, 'training')
+        train_loader_i = dataloader_i[task_id]['train']
+        test_loader_i = dataloader_i[task_id]['test']
+        correct_num = 0
+        # for data in tqdm(test_loader_i):
+        #     correct_num += torch.sum(torch.eq(label, label)).item()
+        print("taskid=",task_id,correct_num)
+    
     # init models
     model_depth = deepcopy(clip_model.visual).to(device)
     model = None
