@@ -61,6 +61,9 @@ download the pre-trained checkpoint [best_eval.pth](https://drive.google.com/fil
 
 ```
 python main.py
+```
+
+You can change session_settings.py and args to run in other datasets.
 
 ## Acknowledgement
 Our codes are built on [CLIP2Point](https://github.com/tyhuang0428/CLIP2Point)
