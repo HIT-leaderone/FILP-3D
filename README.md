@@ -77,5 +77,3 @@ Our codes are built on [CLIP2Point](https://github.com/tyhuang0428/CLIP2Point)
   year={2023}
 }
 ```
-
-You can change session_settings.py and args to run in other datasets.
