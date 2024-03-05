@@ -61,6 +61,18 @@ download the pre-trained checkpoint [best_eval.pth](https://drive.google.com/fil
 
 ```
 python main.py
+
+## Acknowledgement
+Our codes are built on [CLIP2Point](https://github.com/tyhuang0428/CLIP2Point)
+
+## Citation
+```
+@article{xu2023filp,
+  title={FILP-3D: Enhancing 3D Few-shot Class-incremental Learning with Pre-trained Vision-Language Models},
+  author={Xu, Wan and Huang, Tianyu and Qu, Tianyu and Yang, Guanglei and Guo, Yiwen and Zuo, Wangmeng},
+  journal={arXiv preprint arXiv:2312.17051},
+  year={2023}
+}
 ```
 
 You can change session_settings.py and args to run in other datasets.
