@@ -1,3 +1,7 @@
+# FILP-3D
+
+This repo is the official implementation of paper [FILP-3D: Enhancing 3D Few-shot Class-incremental Learning with Pre-trained Vision-Language Models"](https://arxiv.org/abs/2312.17051)
+
 ## Requirements
 
 ### Installation
