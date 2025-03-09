@@ -7,16 +7,19 @@ The FSCIL3D-XL benchmark is programmatically constructed from publicly available
 - **ModelNet40**  
 
   We use the download link in [ModelNet40_Align](https://github.com/lmb-freiburg/orion). You can download it according to the [official documentation](https://github.com/lmb-freiburg/orion/blob/master/datasets/get_modelnet40.sh).
+  
   License: GPL-3.0 license
 
 - **ShapeNet55**  
 
   We use the download link in [Point-Bert](https://github.com/Julie-tang00/Point-BERT). You can download the processed ShapeNet55/34 dataset at [[BaiduCloud](https://pan.baidu.com/s/16Q-GsEXEHkXRhmcSZTY86A)] (code:le04) or [[Google Drive](https://drive.google.com/file/d/1jUB5yD7DP97-EqqU2A9mmr61JpNwZBVK/view?usp=sharing)].
+  
   License: MIT License
 
 - **Co3D (Common Objects in 3D)** 
 
   You can download the CO3D dataset through [Meta's official website of CO3D](https://ai.meta.com/datasets/co3d-downloads/ ). You can keep only the point cloud files, such as "2000.ply".
+  
   License: Attribution-NonCommercial 4.0 International. You can find the detailed license in the [Meta's official website of CO3D](https://ai.meta.com/datasets/co3d-downloads/ )
 
 ### Methods for application and extension.
