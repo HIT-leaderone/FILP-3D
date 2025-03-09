@@ -23,7 +23,7 @@ The FSCIL3D-XL benchmark is programmatically constructed from publicly available
   License: Attribution-NonCommercial 4.0 International. You can find the detailed license in the [Meta's official website of CO3D](https://ai.meta.com/datasets/co3d-downloads/ )
 
 ### Methods for application and extension.
-You can find and use our dataset construction code in the [our repository](https://github.com/HIT-leaderone/FILP-3D). Next, I will introduce how to use our preconfigured continual learning dataset and how to extend your own dataset.
+You can find and use our dataset construction code in the [our repository](https://github.com/HIT-leaderone/FILP-3D). Next, I will introduce how to use our preconfigured FSCIL dataset and how to extend your own dataset.
 
 #### How to use S2S and S2R
 
@@ -124,7 +124,7 @@ class ModelNet40AlignCIL(Dataset):
 
 - session_settings.py
 
-  The functions in this code determine which dataset serves as the base class and which dataset serves as the incremental class in your designed continual learning dataset. Take `shapenet2co3d` as a example:
+  The functions in this code determine which dataset serves as the base class and which dataset serves as the incremental class in your designed FSCIL dataset. Take `shapenet2co3d` as a example:
 
 ```python
 def shapenet2co3d():
